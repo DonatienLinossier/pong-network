@@ -9,15 +9,19 @@
 #include <winsock2.h>
 #include <windows.h>
 #include <process.h>
+#include <sstream>
+#include "../include/const.h"
 
 #pragma comment(lib, "Ws2_32.lib")
 
-#define MAIN_SERVER_PORT 50148
+
 // Port for the main server to listen on
 
 // Structure to represent a game room
 struct GameRoom {
     int port;
+    int id;
+    int numberOfPlayer;
     std::string name;
 };
 
@@ -33,62 +37,89 @@ void signalHandler(int signum) {
 }
 
 // Function to start a game room server as a separate process
-void startGameRoomServer(int port) {
-    std::string command = "game_room_server.exe " + std::to_string(port);
+void startGameRoomServer() {
+    std::string command = "pong_room.exe ";
     _spawnlp(_P_NOWAIT, command.c_str(), command.c_str(), nullptr);
+}
+
+std::vector<std::string> splitString(const std::string& str, char delimiter) {
+    std::vector<std::string> substrings;
+    std::stringstream ss(str);
+    std::string token;
+
+    // Use getline to split the string by the delimiter
+    while (std::getline(ss, token, delimiter)) {
+        substrings.push_back(token);
+    }
+
+    return substrings;
 }
 
 // Function to handle incoming client connections
 void handleClient(SOCKET clientSocket) {
-    while(1) {
+    bool client_alive = true;
+    while(client_alive)
+    {
         char buffer[256];
         int recvSize = recv(clientSocket, buffer, sizeof(buffer) - 1, 0);
-
         if (recvSize > 0) {
-
             buffer[recvSize] = '\0';
-            std::string request(buffer);
+            std::cout << buffer;
+            std::vector<std::string> result = splitString(buffer, TRANSFERT_DELIMITER);
+            int requestCode = std::stoi(result[0]);  // Convert received buffer to integer code
 
-            // Parse client request
-            if (request == "LIST_ROOMS") {
-                std::string response = "Available rooms:\n";
-                for (const auto& room : gameRooms) {
-                       response += "Room Name: " + room.second.name + ", Port: " + std::to_string(room.second.port) + "\n";
-                }
-                send(clientSocket, response.c_str(), response.size(), 0);
-            }
-            else if (request.find("CREATE_ROOM") == 0) {
-                int port = 50000 + gameRooms.size(); // Simple dynamic port allocation
-                GameRoom newRoom = { port, "Room " + std::to_string(port) };
-                gameRooms[port] = newRoom;
-                startGameRoomServer(port);
-                std::cout << "Room created on port " + std::to_string(port) << std::endl;
-
-                std::string response = "Room created on port " + std::to_string(port);
-                send(clientSocket, response.c_str(), response.size(), 0);
-                break;
-            }
-            else if (request.find("JOIN_ROOM") == 0) {
-                int port = std::stoi(request.substr(10));
-                if (gameRooms.find(port) != gameRooms.end()) {
-
-                    std::cout << "Client joining room on port " + std::to_string(port) << std::endl;
-                    std::string response = "Joining room on port " + std::to_string(port);
+            switch (requestCode) {
+            case CLIENT_REQUEST_ALL_ROOMS: {
+                    std::cout << "Client requested list of room\n";
+                    std::string response = "Available rooms:\n";
+                    for (const auto& room : gameRooms) {
+                        response += "Room Name: " + room.second.name + ", Port: " + std::to_string(room.second.port) + "\n";
+                    }
                     send(clientSocket, response.c_str(), response.size(), 0);
                     break;
-                } else {
-                    std::string response = "Room not found.";
-                    send(clientSocket, response.c_str(), response.size(), 0);
-                }
             }
-            else if(request == "exit")
-            {
-                break;
-            } else
-            {
-                std::string response = "Unrecognized request.";
-                send(clientSocket, response.c_str(), response.size(), 0);
 
+            case CLIENT_REQUEST_ROOM_CREATION: {
+
+                    startGameRoomServer();
+                    std::cout << "Starting new room.." << std::endl;
+                    std::string response = "Starting new room..";
+                    send(clientSocket, response.c_str(), response.size(), 0);
+                    break;
+            }
+
+            case CLIENT_REQUEST_JOIN_ROOM: {
+
+                    int port = std::stoi(result[1]);
+                    if (gameRooms.find(port) != gameRooms.end()) {
+                        std::cout << "Client joining room on port " + std::to_string(port) << std::endl;
+                        std::string response = "Joining room on port " + std::to_string(port);
+                        send(clientSocket, response.c_str(), response.size(), 0);
+                    } else {
+                        std::string response = "    Room not found.";
+                        send(clientSocket, response.c_str(), response.size(), 0);
+                    }
+                    break;
+            }
+
+            case CLIENT_REQUEST_QUIT: {
+                    std::string response = "Exiting.";
+                    send(clientSocket, response.c_str(), response.size(), 0);
+                    client_alive = false;
+                    break;
+            }
+
+            case GAME_ROOM_REQUEST_ROOM_STARTED: {
+                    std::cout << "Game room started";
+                    break;
+            }
+
+            default: {
+                    std::cout << "Unrecognized request.\n";
+                    std::string response = "Unrecognized request.";
+                    send(clientSocket, response.c_str(), response.size(), 0);
+                    break;
+            }
             }
         }
     }

@@ -19,7 +19,8 @@ add_executable(pong_room src/pong_room.cpp
 
 add_executable(pong_client src/pong_client.cpp)
 
-add_executable(main_serv src/main_server.cpp)
+add_executable(main_serv src/main_server.cpp
+        include/const.h)
 
 # Link SFML libraries to the 'pong' target
 target_link_libraries(pong_room sfml-system sfml-window sfml-graphics sfml-audio sfml-network Ws2_32)
