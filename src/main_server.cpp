@@ -1,6 +1,7 @@
 //
 // Created by donat on 25/08/2024.
 //
+#define FD_SETSIZE 1024
 #include <csignal>
 #include <iostream>
 #include <string>
@@ -28,13 +29,9 @@ struct GameRoom {
 // Map to store active game rooms
 std::map<int, GameRoom> gameRooms;
 
-bool running = true;
+
 
 // Signal handler to stop the server gracefully
-void signalHandler(int signum) {
-    std::cout << "\nInterrupt signal (" << signum << ") received. Stopping server..." << std::endl;
-    running = false;
-}
 
 // Function to start a game room server as a separate process
 void startGameRoomServer() {
@@ -56,15 +53,16 @@ std::vector<std::string> splitString(const std::string& str, char delimiter) {
 }
 
 // Function to handle incoming client connections
-void handleClient(SOCKET clientSocket) {
-    bool client_alive = true;
-    while(client_alive)
-    {
+int handleClient(SOCKET clientSocket) {
+    //bool client_alive = true;
+    //while(client_alive)
+    //{
+        //bool client_alive = false;
         char buffer[256];
         int recvSize = recv(clientSocket, buffer, sizeof(buffer) - 1, 0);
         if (recvSize > 0) {
             buffer[recvSize] = '\0';
-            std::cout << buffer;
+            std::cout << buffer << " - ";
             std::vector<std::string> result = splitString(buffer, TRANSFERT_DELIMITER);
             int requestCode = std::stoi(result[0]);  // Convert received buffer to integer code
 
@@ -105,12 +103,14 @@ void handleClient(SOCKET clientSocket) {
             case CLIENT_REQUEST_QUIT: {
                     std::string response = "Exiting.";
                     send(clientSocket, response.c_str(), response.size(), 0);
-                    client_alive = false;
+                    //client_alive = false;
+                    return 1;
                     break;
             }
 
             case GAME_ROOM_REQUEST_ROOM_STARTED: {
                     std::cout << "Game room started";
+                    return 1;
                     break;
             }
 
@@ -121,19 +121,17 @@ void handleClient(SOCKET clientSocket) {
                     break;
             }
             }
-        }
+        //}
+        return 0;
     }
-
-    closesocket(clientSocket);
 }
 
-int main() {
+SOCKET setupServer(int port)
+{
     WSADATA wsaData;
     SOCKET listenSocket = INVALID_SOCKET;
-    SOCKET clientSocket = INVALID_SOCKET;
+
     struct sockaddr_in serverAddr;
-    struct sockaddr_in clientAddr;
-    int clientAddrSize = sizeof(clientAddr);
 
     if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) {
         std::cerr << "WSAStartup failed." << std::endl;
@@ -149,7 +147,7 @@ int main() {
 
     serverAddr.sin_family = AF_INET;
     serverAddr.sin_addr.s_addr = inet_addr("127.0.0.1");
-    serverAddr.sin_port = htons(MAIN_SERVER_PORT);
+    serverAddr.sin_port = htons(port);
 
     if (bind(listenSocket, (SOCKADDR*)&serverAddr, sizeof(serverAddr)) == SOCKET_ERROR) {
         std::cerr << "Bind failed." << std::endl;
@@ -165,14 +163,77 @@ int main() {
         return 1;
     }
 
-    std::cout << "Main server listening on port " << MAIN_SERVER_PORT << std::endl;
+    std::cout << "Main server listening on port " << port << std::endl;
 
-    // Register signal handler for graceful shutdown
-    signal(SIGINT, signalHandler);
+    return listenSocket;
+}
+
+SOCKET acceptConnection(SOCKET serverSocket)
+{
+    SOCKET clientSocket = INVALID_SOCKET;
+    struct sockaddr_in clientAddr;
+    int clientAddrSize = sizeof(clientAddr);
+    clientSocket = accept(serverSocket, (SOCKADDR*)&clientAddr, &clientAddrSize);
+    return clientSocket;
+}
+
+int main() {
+
+    SOCKET listenSocket = setupServer(MAIN_SERVER_PORT);
+
+    bool running = true;
+
+    fd_set currentSockets, readySockets;
+
+    FD_ZERO(&currentSockets);
+    FD_SET(listenSocket, &currentSockets);
+    std::cout << "Listening socket : " << listenSocket << std::endl;
 
     while (running) {
-        // Accept a client connection (non-blocking check for exit)
-        clientSocket = accept(listenSocket, (SOCKADDR*)&clientAddr, &clientAddrSize);
+        readySockets = currentSockets;
+
+        timeval timeout;
+        timeout.tv_sec = 2;
+        timeout.tv_usec = 0;
+
+
+        int resultSelect = select(FD_SETSIZE, &readySockets, NULL, NULL, &timeout);
+        if(resultSelect<0)
+        {
+            std::cout << "error";
+        }
+
+        for(int i = 0; i<FD_SETSIZE; i++)
+        {
+            //VRm de la merde FD_ISSET. En gros on a FD_SET qui contient des valeurs de FD. Genre 54 23 5.
+            // FD_ISSET(0, ..) verifie que l ELEMENT 0 soit dans ..., pas le que 0eme element soit défini.
+            // Du coup on teste toutes les valeurs de 0 à 1024 parce que les FD ont des valeurs un peu random..
+            //Puis bon, on prie un peu pour qu'aucun FD ne soit au dessus de 1024 sinon il ne sera traité
+            // Bref en conclusion select ne parait pas si bien ? A gere soit meme avec des tabl ou sinon
+            // regarder du coté de IOCP
+            if(FD_ISSET(i, &readySockets))
+            {
+                //std::cout << i;
+                if(i==listenSocket) //Because 0 is the socket of the server (that is listening for new connection) [see l.188]
+                {
+                    int newClientSocket = acceptConnection(listenSocket);
+                    FD_SET(newClientSocket ,&currentSockets);
+                    std::cout << "New connection" << std::endl;
+                } else
+                {
+                    int isConnectionEnded = handleClient(i);
+                    if(isConnectionEnded)
+                    {
+                        FD_CLR(i, &currentSockets);
+                        closesocket(i);
+                    }
+                }
+            }
+        }
+
+
+        /*SOCKET clientSocket = acceptConnection(listenSocket);
+
         if (clientSocket == INVALID_SOCKET) {
             if (WSAGetLastError() == WSAEWOULDBLOCK && !running) {
                 break;  // Exit the loop if we're shutting down
@@ -185,9 +246,8 @@ int main() {
 
         handleClient(clientSocket);
 
-        // Close client socket after handling
         closesocket(clientSocket);
-        std::cout << "Client disconnected." << std::endl;
+        std::cout << "Client disconnected." << std::endl;*/
     }
 
     std::cout << "Shutting down server..." << std::endl;
