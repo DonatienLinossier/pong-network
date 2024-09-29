@@ -6,9 +6,15 @@
 #define PADDLE_H
 #include <SFML/Graphics.hpp>
 #include <tuple>
+#include <iostream>
+#include <sstream>
+#include <iomanip>
+
+#include "Drawable.h"
+#include "../include/const.h"
 
 
-class Paddle {
+class Paddle : public Drawable{
 
     public :
     /**
@@ -32,9 +38,11 @@ class Paddle {
 
 
     public:
-        void draw(sf::RenderWindow& window);
+        std::string getData() override;
+        void draw(sf::RenderWindow& window) override;
         std::tuple<float, float, float, float> getHitbox() const;
         void playerInput(float y_movement);
+        void loadData(std::string data) override;
 
 };
 

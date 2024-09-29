@@ -4,6 +4,20 @@
 
 #include "../include/Ball.h"
 
+std::vector<std::string> splitStringb(const std::string& str, char delimiter) {
+    std::vector<std::string> substrings;
+    std::stringstream ss(str);
+    std::string token;
+
+    // Use getline to split the string by the delimiter
+    while (std::getline(ss, token, delimiter)) {
+        substrings.push_back(token);
+    }
+
+    return substrings;
+}
+
+
 Ball::Ball(float radius, const sf::Color& color, float x, float y)
         : x_position(x), y_position(y), x_speed(0.02), y_speed(0.02), radius(radius)
 {
@@ -86,6 +100,27 @@ void Ball::checkCollision_paddle(Paddle* paddle)
         x_speed = -x_speed;
     }
 
+}
+
+
+std::string Ball::getData()
+{
+    std::stringstream ss;
+
+    ss << BALL_ID << TRANSFERT_DELIMITER << x_position << TRANSFERT_DELIMITER << y_position;
+    return ss.str();
+}
+
+void Ball::loadData(std::string buffer)
+{
+    std::vector<std::string> data = splitStringb(buffer, TRANSFERT_DELIMITER);
+    if(stoi(data.at(0))!=BALL_ID)
+    {
+        std::cout << "Error: object is not a Ball ! " << stoi(data.at(0)) << " " << data.at(0);
+        return;
+    }
+    x_position = stof(data.at(1));
+    y_position = stof(data.at(2));
 }
 
 

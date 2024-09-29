@@ -8,19 +8,37 @@ set(SFML_DIR "C:/Users/donat/OneDrive/Documents/Programmation/C++/pong/lib/SFML-
 
 # Find SFML package (make sure to use the correct components)
 find_package(SFML 2.6 COMPONENTS system window graphics network audio REQUIRED)
-
 # Add the executable
 add_executable(pong_room src/pong_room.cpp
+        include/const.h
         src/ball.cpp
         include/ball.h
         src/Paddle.cpp
         include/Paddle.h
+        src/GameRoom.cpp
+        include/GameRoom.h
+        include/drawable.h
+        include/PongGame.cpp
+        include/PongGame.h
 )
 
-add_executable(pong_client src/pong_client.cpp)
+add_executable(pong_client src/pong_client.cpp
+        include/const.h
+        src/ball.cpp
+        include/ball.h
+        src/Paddle.cpp
+        include/Paddle.h
+        include/drawable.h
+        include/PongGame.cpp
+        include/PongGame.h
+)
 
 add_executable(main_serv src/main_server.cpp
-        include/const.h)
+        include/const.h
+        include/const.h
+        src/GameRoom.cpp
+        include/GameRoom.h
+)
 
 # Link SFML libraries to the 'pong' target
 target_link_libraries(pong_room sfml-system sfml-window sfml-graphics sfml-audio sfml-network Ws2_32)

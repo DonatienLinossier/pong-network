@@ -6,9 +6,10 @@
 #define BALL_H
 #include <SFML/Graphics.hpp>
 #include "Paddle.h"
+#include "Drawable.h"
 
 
-class Ball {
+class Ball : public Drawable{
     public:
         Ball(float radius, const sf::Color& color, float x, float y);
 
@@ -26,7 +27,9 @@ class Ball {
 
     public:
         void physics(int WIDTH, int HEIGHT, Paddle** paddleArray, int paddleArray_size);
-        void draw(sf::RenderWindow& window);
+        void draw(sf::RenderWindow& window) override;
+        std::string getData() override;
+        void loadData(std::string buffer) override;
 
     private:
         void checkCollision_wall(int WIDTH, int HEIGHT);
