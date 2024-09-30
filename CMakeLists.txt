@@ -20,6 +20,7 @@ add_executable(pong_room src/pong_room.cpp
         include/drawable.h
         include/PongGame.cpp
         include/PongGame.h
+        src/Drawable.cpp
 )
 
 add_executable(pong_client src/pong_client.cpp
@@ -31,6 +32,7 @@ add_executable(pong_client src/pong_client.cpp
         include/drawable.h
         include/PongGame.cpp
         include/PongGame.h
+        src/Drawable.cpp
 )
 
 add_executable(main_serv src/main_server.cpp
@@ -38,12 +40,14 @@ add_executable(main_serv src/main_server.cpp
         include/const.h
         src/GameRoom.cpp
         include/GameRoom.h
+        src/Drawable.cpp
+        src/Drawable.cpp
 )
 
 # Link SFML libraries to the 'pong' target
 target_link_libraries(pong_room sfml-system sfml-window sfml-graphics sfml-audio sfml-network Ws2_32)
 target_link_libraries(pong_client sfml-system sfml-window sfml-graphics sfml-audio sfml-network Ws2_32)
-target_link_libraries(main_serv Ws2_32)
+target_link_libraries(main_serv Ws2_32 sfml-window)
 
 # Copy necessary DLLs to the output directory after build (Windows only)
 if (WIN32)

@@ -271,8 +271,8 @@ int main() {
     sf::RenderWindow window(sf::VideoMode(WIDTH, HEIGHT), "SFML Window Room");
 
     // Create a circle shape with a radius of 50 pixels
-    sf::CircleShape shape(50);
-    shape.setFillColor(sf::Color::Green);  // Set the color of the shape to green
+    //sf::CircleShape shape(50);
+    //shape.setFillColor(sf::Color::Green);  // Set the color of the shape to green
 
 
     Paddle paddle_1(10, 100, 50, 100, sf::Color::White);

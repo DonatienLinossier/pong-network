@@ -13,6 +13,8 @@
 #include <string.h>
 #include <sstream>
 
+#include "../include/PongGame.h"
+
 #pragma comment(lib, "Ws2_32.lib")
 
 
@@ -117,13 +119,14 @@ int enterRoomGame(SOCKET port)
         }
     }
 
+    PongGame pongGame(playerID);
     setNonBlocking(sockfd);
     // Create a window with a size of 800x600 pixels and the title "SFML Window"
     sf::RenderWindow window(sf::VideoMode(WIDTH, HEIGHT), "SFML Window Client");
 
     // Create a circle shape with a radius of 50 pixels
-    sf::CircleShape shape(50);
-    shape.setFillColor(sf::Color::Green);  // Set the color of the shape to green
+    //sf::CircleShape shape(50);
+    //shape.setFillColor(sf::Color::Green);  // Set the color of the shape to green
 
 
     Paddle paddle_1(10, 100, 50, 100, sf::Color::White);
@@ -156,6 +159,13 @@ int enterRoomGame(SOCKET port)
             }
         }
 
+
+
+
+
+
+
+
         memset(buffer, 0, sizeof(buffer));
         int t = recvfrom(sockfd, (char *)buffer, 1026, 0, (struct sockaddr *)&serverAddr, &addrLen);
         buffer[t] = '\0';  // Null-terminate the received data
@@ -181,6 +191,7 @@ int enterRoomGame(SOCKET port)
         ball.loadData(data.at(6) + TRANSFERT_DELIMITER + data.at(7) + TRANSFERT_DELIMITER+ data.at(8));
 
 
+
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Up)) {
             playerPaddle->playerInput(-0.1);
         }
@@ -189,22 +200,21 @@ int enterRoomGame(SOCKET port)
             playerPaddle->playerInput(0.1);
         }
 
-
         // Clear the window with a black color
         window.clear(sf::Color::Black);
 
-        //ball.physics(WIDTH, HEIGHT, paddleArray, 2);
         ball.draw(window);
         paddle_1.draw(window);
         paddle_2.draw(window);
 
-        // Draw the circle shape
-        //window.draw(shape);
+        window.display();
+
+
 
         // Display everything we've drawn (i.e., render the frame)
         const char* dataToSend = (std::to_string(playerID) + TRANSFERT_DELIMITER + playerPaddle->getData()).c_str();
         sendto(sockfd, (const char *)dataToSend, strlen(dataToSend), 0, (const struct sockaddr *)&serverAddr, addrLen);
-        window.display();
+
     }
 
 

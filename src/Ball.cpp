@@ -4,6 +4,8 @@
 
 #include "../include/Ball.h"
 
+#include <memory>
+
 std::vector<std::string> splitStringb(const std::string& str, char delimiter) {
     std::vector<std::string> substrings;
     std::stringstream ss(str);
@@ -19,7 +21,7 @@ std::vector<std::string> splitStringb(const std::string& str, char delimiter) {
 
 
 Ball::Ball(float radius, const sf::Color& color, float x, float y)
-        : x_position(x), y_position(y), x_speed(0.02), y_speed(0.02), radius(radius)
+        : x_position(x), y_position(y), x_speed(0.02), y_speed(0.02), radius(radius), mType(BALL_ID)
 {
     // Initialize the ball shape
     ballShape.setRadius(radius);
@@ -28,6 +30,8 @@ Ball::Ball(float radius, const sf::Color& color, float x, float y)
 
 }
 
+//TODO: Delete the fonc using Paddle**
+// Deprecated, use the fonc with shared_ptr
 void Ball::physics(int const WIDTH, int const HEIGHT, Paddle** paddleArray, int paddleArray_size)
 {
     x_position += x_speed;
@@ -39,6 +43,22 @@ void Ball::physics(int const WIDTH, int const HEIGHT, Paddle** paddleArray, int 
     for(int i = 0; i < paddleArray_size; i++)
     {
         checkCollision_paddle(paddleArray[i]);
+    }
+
+}
+
+void Ball::physics(int const width, int const height, std::vector<std::shared_ptr<Paddle>> &paddleArray, int paddleArray_size)
+{
+    x_position += x_speed;
+    y_position += y_speed;
+
+
+
+    checkCollision_wall(width,height);
+
+    for(auto &paddle: paddleArray)
+    {
+        checkCollision_paddle(paddle);
     }
 
 }
@@ -92,7 +112,40 @@ bool Ball::checkCollision(Paddle* paddle) const
     return distanceSquared <= (radius * radius);
 
 }
+
+bool Ball::checkCollision(std::shared_ptr<Paddle> const &paddle) const
+{
+
+    float paddleLeft, paddleTop, paddleWidth, paddleHeight;
+    std::tie(paddleLeft, paddleTop, paddleWidth, paddleHeight) = paddle->getHitbox();
+
+
+    // Find the closest point on the paddle to the ball
+    float closestX = std::max(paddleLeft, std::min(x_position, paddleLeft + paddleWidth));
+    float closestY = std::max(paddleTop, std::min(y_position, paddleTop + paddleHeight));
+
+    // Calculate the distance between the ball's center and this closest point
+    float distanceX = x_position - closestX;
+    float distanceY = y_position - closestY;
+    float distanceSquared = distanceX * distanceX + distanceY * distanceY;
+
+    // Check if the distance is less than or equal to the ball's radius squared
+    return distanceSquared <= (radius * radius);
+
+}
+
+//deprecated, use the fonc with shared_ptr
 void Ball::checkCollision_paddle(Paddle* paddle)
+{
+    //std::tuple<float, float, float, float> paddleHitbox = paddle->getHitbox();
+    if (checkCollision(paddle)) {
+        x_position -= x_speed;
+        x_speed = -x_speed;
+    }
+
+}
+
+void Ball::checkCollision_paddle(std::shared_ptr<Paddle> &paddle)
 {
     //std::tuple<float, float, float, float> paddleHitbox = paddle->getHitbox();
     if (checkCollision(paddle)) {
@@ -122,5 +175,6 @@ void Ball::loadData(std::string buffer)
     x_position = stof(data.at(1));
     y_position = stof(data.at(2));
 }
+
 
 

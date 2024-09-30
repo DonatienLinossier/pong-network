@@ -18,7 +18,7 @@ std::vector<std::string> splitStringp(const std::string& str, char delimiter) {
 }
 
 Paddle::Paddle(float width, float height, float x_position, float y_position, const sf::Color& color)
-                : width(width), height(height), x_position(x_position), y_position(y_position)
+                : width(width), height(height), x_position(x_position), y_position(y_position), mtype(PADDLE_ID)
 {
     rectShape.setSize(sf::Vector2f(width, height));
     rectShape.setPosition(x_position, y_position);
