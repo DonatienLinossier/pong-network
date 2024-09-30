@@ -21,8 +21,9 @@ std::vector<std::string> splitStringb(const std::string& str, char delimiter) {
 
 
 Ball::Ball(float radius, const sf::Color& color, float x, float y)
-        : x_position(x), y_position(y), x_speed(0.02), y_speed(0.02), radius(radius), mType(BALL_ID)
+        : x_position(x), y_position(y), x_speed(0.02), y_speed(0.02), radius(radius)
 {
+    mType = BALL_ID;
     // Initialize the ball shape
     ballShape.setRadius(radius);
     ballShape.setFillColor(color);
