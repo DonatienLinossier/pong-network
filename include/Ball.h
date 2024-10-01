@@ -32,12 +32,16 @@ class Ball : public Drawable{
         std::string getData() override;
         void loadData(std::string buffer) override;
 
+        void serialize(std::vector<char>& buffer) const override;
+        void deserialize(const char* buffer, size_t& offset) override;
+
     private:
         void checkCollision_wall(int WIDTH, int HEIGHT);
         void checkCollision_paddle(Paddle* paddle);
         void checkCollision_paddle(std::shared_ptr<Paddle> &paddle);
         bool checkCollision(Paddle* paddle) const;
         bool checkCollision(std::shared_ptr<Paddle> const &paddle) const;
+
 
 };
 

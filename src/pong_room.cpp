@@ -2,9 +2,6 @@
 // Created by donat on 25/08/2024.
 //
 
-#include <SFML/Graphics.hpp>
-#include "../include/Ball.h"
-#include "../include/Paddle.h"
 #include "../include/const.h"
 #include "../include/GameRoom.h"
 
@@ -12,6 +9,7 @@
 #include <ws2tcpip.h>
 #include <iostream>
 
+#include "../include/PongGame.h"
 
 
 #pragma comment(lib, "Ws2_32.lib")
@@ -177,8 +175,6 @@ int main() {
 
 
     std::cout<<"waiting for client connection\n";
-    Ball testball(5, sf::Color::Red, 100, 100);
-    testball.loadData(testball.getData());
 
 
     struct sockaddr_in client_addr;
@@ -265,47 +261,28 @@ int main() {
         }
     }
 
-
-
-    // Create a window with a size of 800x600 pixels and the title "SFML Window"
-    sf::RenderWindow window(sf::VideoMode(WIDTH, HEIGHT), "SFML Window Room");
-
-    // Create a circle shape with a radius of 50 pixels
-    //sf::CircleShape shape(50);
-    //shape.setFillColor(sf::Color::Green);  // Set the color of the shape to green
-
-
-    Paddle paddle_1(10, 100, 50, 100, sf::Color::White);
-    Paddle paddle_2(10, 100, WIDTH - 50,  100, sf::Color::White);
-
-
-    Paddle* paddleArray[2];
-    paddleArray[0] = &paddle_1;
-    paddleArray[1] = &paddle_2;
-
-    Ball ball(5, sf::Color::Red, 100, 100);
-
-    std::vector<Drawable*> objects;
-
-
-    objects.push_back(&paddle_1);
-    objects.push_back(&paddle_2);
-    objects.push_back(&ball);
+    PongGame pongGame(0);
+    pongGame.init(WIDTH, HEIGHT);
 
 
 
-    // Main game loop: runs as long as the window is open
     setNonBlockingb(UDP_socket);
-    while (window.isOpen()) {
-        sf::Event event;
+    while (pongGame.getGameRunning()) {
 
-        // Handle events (e.g., window close, keyboard/mouse input)
-        while (window.pollEvent(event))
-        {
-            if (event.type == sf::Event::Closed) {
-                window.close();  // Close the window when the user clicks the close button
-            }
+        pongGame.events();
+        pongGame.physics();
+        pongGame.render();
+
+        std::vector<char> serializedData = pongGame.getSerializedData();
+        const char* dataToSend = serializedData.data(); // Pointer to the vector data
+        size_t dataSize = serializedData.size();        // Size of the serialized data
+
+        for (int i = 0; i < MAX_CLIENTS_PER_ROOM; i++) {
+            sendto(UDP_socket, dataToSend, dataSize, 0,
+                   (struct sockaddr *)&clients[i], sizeof(clients[i]));
         }
+
+        //pongGame.loadSerializedData(pongGame.getSerializedData().data());
 
 
 
@@ -313,59 +290,16 @@ int main() {
         for (int i = 0; i < MAX_CLIENTS_PER_ROOM; i++) {
             ssize_t recv_len = recvfrom(UDP_socket, bufferBis, sizeof(bufferBis) - 1, 0,
                                         (struct sockaddr *)&client_addr, &client_addr_len);
-            if (recv_len < 0) {
-                //Real error
-                perror("Receive failed");
-                continue;
+            if (recv_len > 0) {
+                pongGame.loadSerializedData(bufferBis);
             } else if (recv_len==0)
             {
-                //Receveid nothing
-                continue;
+                //Often just that we received nothing
+                //TODO: error handling
             }
 
-            //TODO: Error here
-            bufferBis[recv_len] = '\0';  // Null-terminate the received message
-            //std::cout << "ah'" << bufferBis << "'ah";
-            std::vector<std::string> data = splitStringcbis(bufferBis, TRANSFERT_DELIMITER);
-            if(stoi(data.at(0))==0)
-            {
-                paddle_1.loadData(data.at(1) + TRANSFERT_DELIMITER + data.at(2) + TRANSFERT_DELIMITER + data.at(3));
-            } else
-            {
-                paddle_2.loadData(data.at(1) + TRANSFERT_DELIMITER +data.at(2) + TRANSFERT_DELIMITER + data.at(3));
-            }
+
         }
-
-
-
-
-
-
-
-        // Clear the window with a black color
-        window.clear(sf::Color::Black);
-
-
-        ball.physics(WIDTH, HEIGHT, paddleArray, 2);
-
-        std::string data = "";
-        for(auto it = objects.begin(); it!=objects.end(); ++it)
-        {
-            data+= (*it)->getData() + TRANSFERT_DELIMITER;
-        }
-        //TODO : Use select in order to get readable FD_set and get data from them. (get input ?)
-        for (int i = 0; i < MAX_CLIENTS_PER_ROOM; i++) {
-            sendto(UDP_socket, data.c_str(), strlen(data.c_str()), 0,
-                   (struct sockaddr *)&clients[i], sizeof(clients[i]));
-        }
-
-        for(auto it = objects.begin(); it!=objects.end(); ++it)
-        {
-            (*it)->draw(window);
-        }
-
-        // Display everything we've drawn (i.e., render the frame)
-        window.display();
     }
 
     const char* message = (std::to_string(GAME_ROOM_REQUEST_END_CONNECTION) + "|" + std::to_string(listeningPort)).c_str();

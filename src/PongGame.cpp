@@ -2,7 +2,7 @@
 // Created by donat on 29/09/2024.
 //
 
-#include "PongGame.h"
+#include "../include/PongGame.h"
 
 #include <memory>
 
@@ -46,8 +46,14 @@ int PongGame::init(unsigned short width, unsigned short height)
     //Window init
     mWidth = width;
     mHeight = height;
-    mWindow = std::make_unique<sf::RenderWindow>(sf::VideoMode(width, height), "SFML Window Client");
 
+    if(mPlayer == 0)
+    {
+        mWindow = std::make_unique<sf::RenderWindow>(sf::VideoMode(width, height), "Game Room");
+    } else
+    {
+        mWindow = std::make_unique<sf::RenderWindow>(sf::VideoMode(width, height), "Client number " + std::to_string(mPlayer));
+    }
 
     //Paddle inits
     addPaddle(10, 100, 50.0f, 100, sf::Color::White);
@@ -82,6 +88,7 @@ int PongGame::init(unsigned short width, unsigned short height)
 
     //End of initilization
     mInitialized = true;
+    mGameRunning = true;
     return 0;
 }
 
@@ -110,6 +117,7 @@ int PongGame::events()
     {
         if (event.type == sf::Event::Closed) {
             mWindow->close();  // Close the window when the user clicks the close button
+            mGameRunning=false;
             return 1;
         }
     }
@@ -148,37 +156,35 @@ bool PongGame::getGameRunning() const
 
 std::vector<char> PongGame::getSerializedData() const
 {
-    //TODO: test!!!
     std::vector<char> buffer;
-    //Protocol version
+
+    // Protocol version
     unsigned int protocolVersion = 1;
     buffer.insert(buffer.end(), reinterpret_cast<const char*>(&protocolVersion),
-                                            reinterpret_cast<const char*>(&protocolVersion) + sizeof(protocolVersion));
+                  reinterpret_cast<const char*>(&protocolVersion) + sizeof(protocolVersion));
 
-    //Number of objects
+    // Number of objects
     unsigned int objNumber = mIDMap.size();
     buffer.insert(buffer.end(), reinterpret_cast<const char*>(&objNumber),
-                                        reinterpret_cast<const char*>(&objNumber) + sizeof(objNumber));
+                  reinterpret_cast<const char*>(&objNumber) + sizeof(objNumber));
 
-    for(auto elt: mIDMap)
-    {
+    // Serialize all objects
+    for (const auto& elt : mIDMap) {
         int type = elt.second->getType();
-        buffer.insert(buffer.end(), reinterpret_cast<const char*>(&type),
-                                        reinterpret_cast<const char*>(&type) + sizeof(type));
         int id = elt.first;
-        buffer.insert(buffer.end(), reinterpret_cast<const char*>(&id),
-                                        reinterpret_cast<const char*>(&id) + sizeof(id));
-    }
-    for(auto elt: mIDMap)
-    {
-        buffer.insert(buffer.end(), reinterpret_cast<const char*>(&(*(elt.second))),
-                                        reinterpret_cast<const char*>(&(*(elt.second))) + sizeof(*(elt.second)));
-    }
-    /*std::ofstream outFile("output/testSerialisation", std::ios::binary); // Use binary mode
-    outFile.write(buffer.data(), buffer.size());
 
-    // Close the file
-    outFile.close();*/
+        //Type of the obj
+        buffer.insert(buffer.end(), reinterpret_cast<const char*>(&type),
+                      reinterpret_cast<const char*>(&type) + sizeof(type));
+
+        //id of the obj
+        buffer.insert(buffer.end(), reinterpret_cast<const char*>(&id),
+                      reinterpret_cast<const char*>(&id) + sizeof(id));
+
+        // Serialize object data
+        elt.second->serialize(buffer);  // Serialize based on the object type
+    }
+
     return buffer;
 }
 
@@ -189,53 +195,45 @@ int PongGame::loadSerializedData(const char* buffer)
 {
     //TODO: test !!!
     unsigned int protocolVersion;
-    memcpy(&protocolVersion, buffer, sizeof(unsigned int));
+    memcpy(&protocolVersion, buffer, sizeof(protocolVersion));
 
-    switch(protocolVersion)
-    {
-    case 1:
-        {
-            unsigned int objNumber;
-            memcpy(&objNumber, buffer+sizeof(unsigned int), sizeof(objNumber));
+    if (protocolVersion == 1) {
+        size_t offset = sizeof(protocolVersion);
 
-            int headerSize = sizeof(unsigned int)*2 +(sizeof(int)*2)*objNumber;
-            int compteur = 0;
-            for(int i =0; i<objNumber; ++i)
-            {
-                int type;
-                memcpy(&type, buffer+ sizeof(unsigned int)*2 +(sizeof(int)*2)*i, sizeof(type)); //memcpy(&test, buffer + sizeof(header) + sizeOfPreviousHeaderdata, sizeof(int));
+        // Number of objects
+        unsigned int objNumber;
+        memcpy(&objNumber, buffer + offset, sizeof(objNumber));
+        offset += sizeof(objNumber);
 
-                int ID;
-                memcpy(&type, buffer+ sizeof(unsigned int)*2 +(sizeof(int)*2)*i + sizeof(type), sizeof(ID)); //memcpy(&test, buffer + sizeof(header) + sizeOfPreviousHeaderdata + sizeOf(type), sizeof(int));
+        // Deserialize each object
+        for (unsigned int i = 0; i < objNumber; ++i) {
+            int type, id;
+            memcpy(&type, buffer + offset, sizeof(type));
+            offset += sizeof(type);
+            memcpy(&id, buffer + offset, sizeof(id));
+            offset += sizeof(id);
 
-                if(mIDMap.find(ID)==mIDMap.end()) //The ID is not is the map
-                {
-                    /*TODO: We ll need to create it when we will move the creation of the game on the serv side(The first connection will send all the objs, and we will create them.
-                            Could also be done in another fonc, which seems better. [Do not forget to add the pointers of the elt to the differents tabs]
-                            In all case, for now we will just raise an error as all elements we receive should be already initiliazed*/
-                    std::cerr << "Element with ID " << ID << "cannot be find in nIDMap. The type of the elt is " << type << ".(See const.h to have the correspond type)" << std::endl;
-                    return 2;
-                }
+            // Check if object exists in mIDMap
+            if (mIDMap.find(id) != mIDMap.end()) {
+                auto& obj = mIDMap.at(id);
 
-                if(mIDMap.at(ID)->getType()!=type)
-                {
-                    std::cerr << "Mismatched type for ID " << ID << " ! Trying to fill a " << mIDMap.at(ID)->getType() << " with a " << type << ". (See const.h to have the correspond types)" << std::endl;
+                // Ensure the type matches
+                if (obj->getType() != type) {
+                    std::cerr << "Type mismatch for ID " << id << std::endl;
                     return 3;
                 }
 
-
-                memcpy(&(*(mIDMap.at(ID))), buffer + headerSize + compteur, sizeof(*mIDMap.at(ID)));
-                // So here, we copy to the adresse of the obj stored by the shared ptr with the id ID of the nIDmap. The size of the obcj is sizeof(*mIDMap(ID))
-                compteur+=sizeof(*mIDMap.at(ID));
+                // Deserialize object data
+                obj->deserialize(buffer, offset);
+            } else {
+                std::cerr << "Object with ID " << id << " not found" << std::endl;
+                return 2;
             }
-            return 0;
         }
-
-    default:
-        {
-            std::cerr << "Unhandled protocol version" << std::endl;
-            return 1;
-        }
+        return 0;
+    } else {
+        std::cerr << "Unhandled protocol version: " << protocolVersion << std::endl;
+        return 1;
     }
 }
 

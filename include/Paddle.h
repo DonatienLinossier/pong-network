@@ -43,7 +43,8 @@ class Paddle : public Drawable{
         std::tuple<float, float, float, float> getHitbox() const;
         void playerInput(float y_movement);
         void loadData(std::string data) override;
-
+        void serialize(std::vector<char>& buffer) const override;
+        void deserialize(const char* buffer, size_t& offset) override;
 };
 
 

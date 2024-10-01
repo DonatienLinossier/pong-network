@@ -1,9 +1,6 @@
 //
 // Created by donat on 25/08/2024.
 //
-#include <SFML/Graphics.hpp>
-#include "../include/Ball.h"
-#include "../include/Paddle.h"
 #include "../include/const.h"
 
 #include <winsock2.h>
@@ -94,7 +91,7 @@ int enterRoomGame(SOCKET port)
             }
         case ACK:
             {
-                playerID = 0;
+                playerID = 1;
                 std::cout << "Client connected, waiting for 2nd client." << std::endl;
                 memset(buffer, 0, sizeof(buffer));
 
@@ -110,7 +107,7 @@ int enterRoomGame(SOCKET port)
             {
                 if (playerID == -1)
                 {
-                    playerID = 1;
+                    playerID = 2;
                 }
                 std::cout << "Party starting" << buffer;
                 preparationLoop = 0;
@@ -120,100 +117,31 @@ int enterRoomGame(SOCKET port)
     }
 
     PongGame pongGame(playerID);
+    pongGame.init(WIDTH, HEIGHT);
+
     setNonBlocking(sockfd);
-    // Create a window with a size of 800x600 pixels and the title "SFML Window"
-    sf::RenderWindow window(sf::VideoMode(WIDTH, HEIGHT), "SFML Window Client");
 
-    // Create a circle shape with a radius of 50 pixels
-    //sf::CircleShape shape(50);
-    //shape.setFillColor(sf::Color::Green);  // Set the color of the shape to green
-
-
-    Paddle paddle_1(10, 100, 50, 100, sf::Color::White);
-    Paddle paddle_2(10, 100, WIDTH - 50,  100, sf::Color::White);
-
-
-    Paddle* paddleArray[2];
-    paddleArray[0] = &paddle_1;
-    paddleArray[1] = &paddle_2;
-
-    Ball ball(5, sf::Color::Red, 100, 100);
-
-    Paddle* playerPaddle;
-
-    if (playerID == 0) { playerPaddle = &paddle_1;}
-    else if(playerID == 1){ playerPaddle = &paddle_2;}
-    else {
-        //TODO: Handle error properly
-        }
-
-    // Main game loop: runs as long as the window is open
-    while (window.isOpen()) {
-        sf::Event event;
-
-        // Handle events (e.g., window close, keyboard/mouse input)
-        while (window.pollEvent(event))
-        {
-            if (event.type == sf::Event::Closed) {
-                window.close();  // Close the window when the user clicks the close button
-            }
-        }
-
-
-
-
-
-
-
+    while (pongGame.getGameRunning()) {
 
         memset(buffer, 0, sizeof(buffer));
         int t = recvfrom(sockfd, (char *)buffer, 1026, 0, (struct sockaddr *)&serverAddr, &addrLen);
-        buffer[t] = '\0';  // Null-terminate the received data
-        if(t<=0)
+        if (t > 0) {
+            pongGame.loadSerializedData(buffer);
+        } else
         {
-            //std::cout << t << "-" << buffer;
-            continue;
+            //often no data retrieved
+            //TODO: add error handling
         }
 
-        std::vector<std::string> data = splitStringc(buffer, TRANSFERT_DELIMITER);
-        if (playerID == 0)
-        {
-
-            paddle_2.loadData(data.at(3) + TRANSFERT_DELIMITER + data.at(4) + TRANSFERT_DELIMITER+ data.at(5));
-        }
-        else if(playerID == 1)
-        {
-            paddle_1.loadData(data.at(0) + TRANSFERT_DELIMITER + data.at(1) + TRANSFERT_DELIMITER+ data.at(2));
-        }
-        else {
-            //TODO: Handle error properly
-        }
-        ball.loadData(data.at(6) + TRANSFERT_DELIMITER + data.at(7) + TRANSFERT_DELIMITER+ data.at(8));
+        pongGame.events();
+        //pongGame.physics();
+        pongGame.render();
 
 
+        std::vector<char> serializedData = pongGame.getSerializedData();
+        sendto(sockfd, serializedData.data(), serializedData.size(), 0, (const struct sockaddr *)&serverAddr, addrLen);
 
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Up)) {
-            playerPaddle->playerInput(-0.1);
-        }
-
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Down)) {
-            playerPaddle->playerInput(0.1);
-        }
-
-        // Clear the window with a black color
-        window.clear(sf::Color::Black);
-
-        ball.draw(window);
-        paddle_1.draw(window);
-        paddle_2.draw(window);
-
-        window.display();
-
-
-
-        // Display everything we've drawn (i.e., render the frame)
-        const char* dataToSend = (std::to_string(playerID) + TRANSFERT_DELIMITER + playerPaddle->getData()).c_str();
-        sendto(sockfd, (const char *)dataToSend, strlen(dataToSend), 0, (const struct sockaddr *)&serverAddr, addrLen);
+        //pongGame.loadSerializedData(pongGame.getSerializedData().data());
 
     }
 

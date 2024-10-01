@@ -177,5 +177,25 @@ void Ball::loadData(std::string buffer)
     y_position = stof(data.at(2));
 }
 
+void Ball::serialize(std::vector<char>& buffer) const
+{
+    buffer.insert(buffer.end(), reinterpret_cast<const char*>(&x_position), reinterpret_cast<const char*>(&x_position) + sizeof(x_position));
+    buffer.insert(buffer.end(), reinterpret_cast<const char*>(&y_position), reinterpret_cast<const char*>(&y_position) + sizeof(y_position));
+    buffer.insert(buffer.end(), reinterpret_cast<const char*>(&x_speed), reinterpret_cast<const char*>(&x_speed) + sizeof(x_speed));
+    buffer.insert(buffer.end(), reinterpret_cast<const char*>(&y_speed), reinterpret_cast<const char*>(&y_speed) + sizeof(y_speed));
+
+}
+void Ball::deserialize(const char* buffer, size_t& offset)
+{
+    memcpy(&x_position, buffer + offset, sizeof(x_position));
+    offset += sizeof(x_position);
+    memcpy(&y_position, buffer + offset, sizeof(y_position));
+    offset += sizeof(y_position);
+    memcpy(&x_speed, buffer + offset, sizeof(x_speed));
+    offset += sizeof(x_speed);
+    memcpy(&y_speed, buffer + offset, sizeof(y_speed));
+    offset += sizeof(y_speed);
+}
+
 
 

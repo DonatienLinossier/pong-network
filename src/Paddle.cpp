@@ -72,3 +72,17 @@ void Paddle::loadData(std::string buffer)
     }
 
 }
+
+void Paddle::serialize(std::vector<char>& buffer) const {
+    // Serialize the paddle's position and size
+    buffer.insert(buffer.end(), reinterpret_cast<const char*>(&x_position), reinterpret_cast<const char*>(&x_position) + sizeof(x_position));
+    buffer.insert(buffer.end(), reinterpret_cast<const char*>(&y_position), reinterpret_cast<const char*>(&y_position) + sizeof(y_position));
+}
+
+void Paddle::deserialize(const char* buffer, size_t& offset) {
+    // Deserialize the paddle's position and size
+    memcpy(&x_position, buffer + offset, sizeof(x_position));
+    offset += sizeof(x_position);
+    memcpy(&y_position, buffer + offset, sizeof(y_position));
+    offset += sizeof(y_position);
+}

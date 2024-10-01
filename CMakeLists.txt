@@ -18,7 +18,7 @@ add_executable(pong_room src/pong_room.cpp
         src/GameRoom.cpp
         include/GameRoom.h
         include/drawable.h
-        include/PongGame.cpp
+        src/PongGame.cpp
         include/PongGame.h
         src/Drawable.cpp
 )
@@ -30,7 +30,7 @@ add_executable(pong_client src/pong_client.cpp
         src/Paddle.cpp
         include/Paddle.h
         include/drawable.h
-        include/PongGame.cpp
+        src/PongGame.cpp
         include/PongGame.h
         src/Drawable.cpp
 )
