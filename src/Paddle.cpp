@@ -86,3 +86,9 @@ void Paddle::deserialize(const char* buffer, size_t& offset) {
     memcpy(&y_position, buffer + offset, sizeof(y_position));
     offset += sizeof(y_position);
 }
+
+void Paddle::skipDeserialize(size_t& offset) const {
+    // Deserialize the paddle's position and size
+    offset += sizeof(x_position);
+    offset += sizeof(y_position);
+}

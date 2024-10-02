@@ -197,5 +197,12 @@ void Ball::deserialize(const char* buffer, size_t& offset)
     offset += sizeof(y_speed);
 }
 
+void Ball::skipDeserialize(size_t& offset) const
+{
+    offset += sizeof(x_position);
+    offset += sizeof(y_position);
+    offset += sizeof(x_speed);
+    offset += sizeof(y_speed);
+}
 
 

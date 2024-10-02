@@ -34,6 +34,7 @@ class Ball : public Drawable{
 
         void serialize(std::vector<char>& buffer) const override;
         void deserialize(const char* buffer, size_t& offset) override;
+        void skipDeserialize(size_t& offset) const override;
 
     private:
         void checkCollision_wall(int WIDTH, int HEIGHT);

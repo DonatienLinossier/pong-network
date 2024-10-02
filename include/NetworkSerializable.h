@@ -14,6 +14,7 @@ public:
     //virtual std::vector<char> serializeData() const = 0;
     virtual void serialize(std::vector<char>& buffer) const = 0;
     virtual void deserialize(const char* buffer, size_t& offset) = 0;
+    virtual void skipDeserialize(size_t& offset) const = 0;
 };
 
 #endif //NETWORKSERIALIZABLE_H

@@ -25,6 +25,7 @@ private:
     unsigned short mWidth;
     unsigned short mHeight;
     std::shared_ptr<Paddle> mPlayerPaddle;
+    int mPlayerPaddleID;
 
     std::vector<std::shared_ptr<Paddle>> mPaddleArray; //Contains all the paddles of the scene. (Basicaly for ball colision)
     std::vector<std::shared_ptr<Ball>> mBallsArray; //Contains all the balls of the scene. (Often only 1)
@@ -40,6 +41,8 @@ public:
     int render() const; // Update the frame
 
     bool getGameRunning() const;
+
+    std::vector<char> getPlayerSerializedData() const;
     std::vector<char> getSerializedData() const;
     int loadSerializedData(const char* buffer);
 

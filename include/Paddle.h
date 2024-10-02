@@ -45,6 +45,7 @@ class Paddle : public Drawable{
         void loadData(std::string data) override;
         void serialize(std::vector<char>& buffer) const override;
         void deserialize(const char* buffer, size_t& offset) override;
+        void skipDeserialize(size_t& offset) const override;
 };
 
 

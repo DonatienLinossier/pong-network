@@ -138,9 +138,8 @@ int enterRoomGame(SOCKET port)
         pongGame.render();
 
 
-        std::vector<char> serializedData = pongGame.getSerializedData();
+        std::vector<char> serializedData = pongGame.getPlayerSerializedData();
         sendto(sockfd, serializedData.data(), serializedData.size(), 0, (const struct sockaddr *)&serverAddr, addrLen);
-
         //pongGame.loadSerializedData(pongGame.getSerializedData().data());
 
     }

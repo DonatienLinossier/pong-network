@@ -14,7 +14,8 @@ PongGame::PongGame(unsigned short playerView) :
     mWidth(0),
     mHeight(0),
     mIdCounter(0),
-    mPlayerPaddle(nullptr){}
+    mPlayerPaddle(nullptr),
+    mPlayerPaddleID(-1){}
 
 PongGame::~PongGame()
 {
@@ -71,6 +72,13 @@ int PongGame::init(unsigned short width, unsigned short height)
         if(mPlayer-1<mPaddleArray.size())
         {
             mPlayerPaddle = mPaddleArray.at(mPlayer-1);
+            for (const auto& elt : mIDMap)
+            {
+                //TODO: optimize..
+                if(elt.second!=mPlayerPaddle)
+                    continue;
+                mPlayerPaddleID = elt.first;
+            }
 
         } else
         {
@@ -154,6 +162,43 @@ bool PongGame::getGameRunning() const
     return mGameRunning;
 }
 
+std::vector<char> PongGame::getPlayerSerializedData() const
+{
+    std::vector<char> buffer;
+
+    // Protocol version
+    unsigned int protocolVersion = 1;
+    buffer.insert(buffer.end(), reinterpret_cast<const char*>(&protocolVersion),
+                  reinterpret_cast<const char*>(&protocolVersion) + sizeof(protocolVersion));
+
+    // Number of objects
+    unsigned int objNumber = 1;
+    buffer.insert(buffer.end(), reinterpret_cast<const char*>(&objNumber),
+                  reinterpret_cast<const char*>(&objNumber) + sizeof(objNumber));
+
+    // Serialize data
+    if(mPlayerPaddle==nullptr)
+        return buffer;
+
+    const auto& elt = mIDMap.find(mPlayerPaddleID);
+
+    const int type = elt->second->getType();
+    const int id = elt->first;
+
+    //Type of the obj
+    buffer.insert(buffer.end(), reinterpret_cast<const char*>(&type),
+                      reinterpret_cast<const char*>(&type) + sizeof(type));
+
+    //id of the obj
+    buffer.insert(buffer.end(), reinterpret_cast<const char*>(&id),
+                      reinterpret_cast<const char*>(&id) + sizeof(id));
+
+    // Serialize object data
+    elt->second->serialize(buffer);  // Serialize based on the object type
+
+    return buffer;
+}
+
 std::vector<char> PongGame::getSerializedData() const
 {
     std::vector<char> buffer;
@@ -213,9 +258,16 @@ int PongGame::loadSerializedData(const char* buffer)
             memcpy(&id, buffer + offset, sizeof(id));
             offset += sizeof(id);
 
+
+
             // Check if object exists in mIDMap
             if (mIDMap.find(id) != mIDMap.end()) {
                 auto& obj = mIDMap.at(id);
+                if(id==mPlayerPaddleID)
+                {
+                    obj->skipDeserialize(offset);
+                    continue;
+                }
 
                 // Ensure the type matches
                 if (obj->getType() != type) {
